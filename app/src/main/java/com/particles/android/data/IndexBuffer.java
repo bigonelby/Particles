@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
-import static android.opengl.GLES20.GL_ARRAY_BUFFER;
 import static android.opengl.GLES20.GL_ELEMENT_ARRAY_BUFFER;
 import static android.opengl.GLES20.GL_STATIC_DRAW;
 import static android.opengl.GLES20.glBindBuffer;
@@ -27,7 +26,7 @@ public class IndexBuffer {
         }
         bufferId = buffers[0];
 
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[0]);
 
         ShortBuffer vertexArray = ByteBuffer
                 .allocateDirect(vertexData.length * BYTES_PER_SHORT)
@@ -40,7 +39,7 @@ public class IndexBuffer {
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexArray.capacity() * BYTES_PER_SHORT,
                 vertexArray, GL_STATIC_DRAW);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     public int getBufferId() {

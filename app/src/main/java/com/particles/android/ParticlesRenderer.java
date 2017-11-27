@@ -21,15 +21,23 @@ import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.GL_BLEND;
 import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
+import static android.opengl.GLES20.GL_CULL_FACE;
+import static android.opengl.GLES20.GL_DEPTH_BUFFER_BIT;
+import static android.opengl.GLES20.GL_DEPTH_TEST;
+import static android.opengl.GLES20.GL_LEQUAL;
+import static android.opengl.GLES20.GL_LESS;
 import static android.opengl.GLES20.GL_ONE;
 import static android.opengl.GLES20.glBlendFunc;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
+import static android.opengl.GLES20.glDepthFunc;
+import static android.opengl.GLES20.glDepthMask;
 import static android.opengl.GLES20.glDisable;
 import static android.opengl.GLES20.glEnable;
 import static android.opengl.GLES20.glViewport;
 import static android.opengl.Matrix.multiplyMM;
 import static android.opengl.Matrix.rotateM;
+import static android.opengl.Matrix.scaleM;
 import static android.opengl.Matrix.setIdentityM;
 import static android.opengl.Matrix.translateM;
 
@@ -76,7 +84,8 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         glBlendFunc(GL_ONE, GL_ONE);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        //glEnable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
 
         particleProgram = new ParticleShaderProgram(context);
         particleSystem = new ParticleSystem(10000);
@@ -134,16 +143,15 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         drawHeightmap();
-        //drawSkybox();
+        drawSkybox();
         drawParticles();
     }
 
     private void drawHeightmap() {
         setIdentityM(modelMatrix, 0);
-        //scaleM(modelMatrix, 0, 100f, 10f, 100f);
+        scaleM(modelMatrix, 0, 100f, 10f, 100f);
         updateMvpMatrix();
         heightmapProgram.useProgram();
         heightmapProgram.setUniforms(modelViewProjectionMatrix);
@@ -157,9 +165,9 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         skyboxProgram.useProgram();
         skyboxProgram.setUniforms(modelViewProjectionMatrix, skyboxTexture);
         skybox.bindData(skyboxProgram);
-        //glDepthFunc(GL_LEQUAL);
+        glDepthFunc(GL_LEQUAL);
         skybox.draw();
-        //glDepthFunc(GL_LESS);
+        glDepthFunc(GL_LESS);
     }
 
     private void drawParticles() {
@@ -179,9 +187,9 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         particleProgram.setUniforms(modelViewProjectionMatrix, currentTime, particleTexture);
         particleSystem.bindData(particleProgram);
 
-        //glDepthMask(false);
+        glDepthMask(false);
         particleSystem.draw();
-        //glDepthMask(true);
+        glDepthMask(true);
 
         glDisable(GL_BLEND);
     }
