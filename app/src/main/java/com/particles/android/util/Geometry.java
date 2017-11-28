@@ -89,6 +89,10 @@ public class Geometry {
         public Vector scale(float f) {
             return new Vector(x * f, y * f, z * f);
         }
+
+        public Vector normalize() {
+            return scale(1f / length());
+        }
     }
 
     public static Vector vectorBetween(Point from, Point to) {
