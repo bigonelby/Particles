@@ -35,11 +35,14 @@ import static android.opengl.GLES20.glDepthMask;
 import static android.opengl.GLES20.glDisable;
 import static android.opengl.GLES20.glEnable;
 import static android.opengl.GLES20.glViewport;
+import static android.opengl.Matrix.invertM;
 import static android.opengl.Matrix.multiplyMM;
+import static android.opengl.Matrix.multiplyMV;
 import static android.opengl.Matrix.rotateM;
 import static android.opengl.Matrix.scaleM;
 import static android.opengl.Matrix.setIdentityM;
 import static android.opengl.Matrix.translateM;
+import static android.opengl.Matrix.transposeM;
 
 
 /**
@@ -49,6 +52,8 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
 
     private final Context context;
 
+    private final float[] modelViewMatrix = new float[16];
+    private final float[] it_modelViewMatrix = new float[16];
     private final float[] modelMatrix = new float[16];
     private final float[] viewMatrix = new float[16];
     private final float[] viewMatrixForSkybox = new float[16];
@@ -72,6 +77,18 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
     private SkyboxShaderProgram skyboxProgram;
     private Skybox skybox;
     private int skyboxTexture;
+
+    private final float[] vectorToLight = {0.30f, 0.35f, -0.89f, 0f};
+
+    private final float[] pointLightPositions = new float[]
+            {-1f, 1f, 0f, 1f,
+              0f, 1f, 0f, 1f,
+              1f, 1f, 0f, 1f};
+
+    private final float[] pointLightColors = new float[]
+            {1.00f, 0.20f, 0.02f,
+             0.02f, 0.25f, 0.02f,
+             0.02f, 0.20f, 1.00f};
 
     public ParticlesRenderer(Context context) {
         this.context = context;
@@ -123,9 +140,9 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         skyboxProgram = new SkyboxShaderProgram(context);
         skybox = new Skybox();
         skyboxTexture = TextureHelper.loadCubeMap(context,
-                new int[] { R.drawable.left, R.drawable.right,
-                            R.drawable.bottom, R.drawable.top,
-                            R.drawable.front, R.drawable.back});
+                new int[] { R.drawable.night_left, R.drawable.night_right,
+                            R.drawable.night_bottom, R.drawable.night_top,
+                            R.drawable.night_front, R.drawable.night_back});
 
         particleTexture = TextureHelper.loadTexture(context, R.drawable.particle_texture);
 
@@ -154,7 +171,15 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         scaleM(modelMatrix, 0, 100f, 10f, 100f);
         updateMvpMatrix();
         heightmapProgram.useProgram();
-        heightmapProgram.setUniforms(modelViewProjectionMatrix);
+
+        final float[] vectorToLightInEyeSpace = new float[4];
+        final float[] pointPositionsInEyeSpace = new float[12];
+        multiplyMV(vectorToLightInEyeSpace, 0, viewMatrix, 0, vectorToLight, 0);
+        multiplyMV(pointPositionsInEyeSpace, 0, viewMatrix, 0, pointLightPositions, 0);
+        multiplyMV(pointPositionsInEyeSpace, 4, viewMatrix, 0, pointLightPositions, 4);
+        multiplyMV(pointPositionsInEyeSpace, 8, viewMatrix, 0, pointLightPositions, 8);
+        heightmapProgram.setUniforms(modelViewMatrix, it_modelViewMatrix, modelViewProjectionMatrix,
+                vectorToLightInEyeSpace, pointPositionsInEyeSpace, pointLightColors);
         heightmap.bindData(heightmapProgram);
         heightmap.draw();
     }
@@ -218,8 +243,10 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
     }
 
     private void updateMvpMatrix() {
-        multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
-        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+        multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+        invertM(tempMatrix, 0, modelViewMatrix, 0);
+        transposeM(it_modelViewMatrix, 0, tempMatrix, 0);
+        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0);
     }
 
     private void updateMvpMatrixForSkybox() {
