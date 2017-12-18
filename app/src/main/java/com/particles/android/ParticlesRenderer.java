@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.opengl.GLSurfaceView;
+import android.os.SystemClock;
+import android.util.Log;
 
 import com.particles.android.objects.Heightmap;
 import com.particles.android.objects.ParticleShooter;
@@ -13,6 +15,7 @@ import com.particles.android.programs.HeightmapShaderProgram;
 import com.particles.android.programs.ParticleShaderProgram;
 import com.particles.android.programs.SkyboxShaderProgram;
 import com.particles.android.util.Geometry;
+import com.particles.android.util.LoggerConfig;
 import com.particles.android.util.MatrixHelper;
 import com.particles.android.util.TextureHelper;
 
@@ -78,6 +81,12 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
     private Skybox skybox;
     private int skyboxTexture;
 
+    private long frameStartTimeMs;
+
+    private static final String TAG = "ParticlesRenderer";
+    private long startTimeMs;
+    private int frameCount;
+
     private final float[] vectorToLight = {0.30f, 0.35f, -0.89f, 0f};
 
     private final float[] pointLightPositions = new float[]
@@ -89,6 +98,8 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
             {1.00f, 0.20f, 0.02f,
              0.02f, 0.25f, 0.02f,
              0.02f, 0.20f, 1.00f};
+    private float xOffset;
+    private float yOffset;
 
     public ParticlesRenderer(Context context) {
         this.context = context;
@@ -160,10 +171,37 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        limitFrameRate(24);
+        logFrameRate();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         drawHeightmap();
         drawSkybox();
         drawParticles();
+    }
+
+    private void logFrameRate() {
+        if (LoggerConfig.ON) {
+            long elapsedRealtimeMs = SystemClock.elapsedRealtime();
+            double elapsedSeconds = (elapsedRealtimeMs - startTimeMs) / 1000.0;
+
+            if (elapsedSeconds >= 1.0) {
+                Log.v(TAG, frameCount / elapsedSeconds + "fps");
+                startTimeMs = SystemClock.elapsedRealtime();
+                frameCount = 0;
+            }
+            frameCount++;
+        }
+    }
+
+    private void limitFrameRate(int framesPerSecond) {
+        long elapsedFrameTimeMs = SystemClock.elapsedRealtime() - frameStartTimeMs;
+        long expectedFrameTimeMs = 1000 / framesPerSecond;
+        long timeToSleepMs = expectedFrameTimeMs - elapsedFrameTimeMs;
+
+        if (timeToSleepMs > 0) {
+            SystemClock.sleep(timeToSleepMs);
+        }
+        frameStartTimeMs = SystemClock.elapsedRealtime();
     }
 
     private void drawHeightmap() {
@@ -239,7 +277,7 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
         rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f);
         rotateM(viewMatrix, 0, -xRotation, 0f, 1f, 0f);
         System.arraycopy(viewMatrix, 0, viewMatrixForSkybox, 0, viewMatrix.length);
-        translateM(viewMatrix, 0, 0, -1.5f, -5f);
+        translateM(viewMatrix, 0, 0 - xOffset, -1.5f - yOffset, -5f);
     }
 
     private void updateMvpMatrix() {
@@ -252,5 +290,11 @@ public class ParticlesRenderer implements GLSurfaceView.Renderer {
     private void updateMvpMatrixForSkybox() {
         multiplyMM(tempMatrix, 0, viewMatrixForSkybox, 0, modelMatrix, 0);
         multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+    }
+
+    public void handleOffsetsChanged(float xOffset, float yOffset) {
+        this.xOffset = (xOffset - 0.5f) * 2.5f;
+        this.yOffset = (yOffset - 0.5f) * 2.5f;
+        updateViewMatrices();
     }
 }
